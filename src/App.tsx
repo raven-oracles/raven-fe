@@ -1,7 +1,7 @@
-
-import React, { useEffect } from 'react'
 import { DeLabModal, DeLabButton, DeLabConnect } from '@delab-team/connect'
-
+import { useSelector, useDispatch } from 'react-redux'
+import { write, IUser, IOracle } from './userStore'
+import store from './store'
 import {
     DeLabNetwork,
     DeLabTypeConnect,
@@ -12,21 +12,25 @@ import {
 } from '@delab-team/connect'
 import { QRCodeSVG } from 'qrcode.react'
 import { addListener } from 'process'
+import { useEffect, FC, useState } from 'react'
 
+import { BrowserRouter, Route, Routes, Link } from "react-router-dom";
 const DeLabConnector = new DeLabConnect('https://google.com', 'Test', 'mainnet')
 
-export const App: React.FC = () => {
+export const App: FC = () => {
+    const count = useSelector((state: ReturnType<typeof store.getState>) => state.user.value)
+    const dispatch = useDispatch()
 
-    const [firstRender, setFirstRender] = React.useState<boolean>(false)
+    const [firstRender, setFirstRender] = useState<boolean>(false)
 
-    const [isConnected, setIsConnected] = React.useState<boolean>(false)
-    const [address, setAddress] = React.useState<DeLabAddress>(undefined)
-    const [network, setNetwork] = React.useState<DeLabNetwork>('mainnet')
-    const [typeConnect, setTypeConnect] = React.useState<DeLabTypeConnect>(undefined)
+    const [isConnected, setIsConnected] = useState<boolean>(false)
+    const [address, setAddress] = useState<DeLabAddress>(undefined)
+    const [network, setNetwork] = useState<DeLabNetwork>('mainnet')
+    const [typeConnect, setTypeConnect] = useState<DeLabTypeConnect>(undefined)
 
-    const [dataTx, setDataTx] = React.useState<any>(null)
+    const [dataTx, setDataTx] = useState<any>(null)
 
-    const [approveLink, setApproveLink] = React.useState<string>('')
+    const [approveLink, setApproveLink] = useState<string>('')
 
     async function sendTransaction() {
         const trans: DeLabTransaction = {
@@ -42,20 +46,20 @@ export const App: React.FC = () => {
         DeLabConnector.on('connect', (data: DeLabEvent) => {
             setIsConnected(true)
             const connectConfig: DeLabConnecting = data.data
-            setAddress(connectConfig.address)
-            setTypeConnect(connectConfig.typeConnect)
-            setNetwork(connectConfig.network)
-
-            fetch('http://localhost:5000/api/v1/keyGen/', {
-                body: JSON.stringify({ wallet: address }),
+            fetch('http://localhost:5000/api/v1/login/', {
+                body: JSON.stringify({ ownerAddress: connectConfig.address }),
                 method: 'POST',
                 headers: {
                     Accept: "application/json, text/plain, */*",
                     "Content-Type": "application/json",
                 },
-            }).then(e => e.json()).then(e => {
+            }).then(e => e.json()).then((e: IUser) => {
                 console.log(e)
+                dispatch(write(e))
             })
+            setAddress(connectConfig.address)
+            setTypeConnect(connectConfig.typeConnect)
+            setNetwork(connectConfig.network)
         })
 
         DeLabConnector.on('disconnect', () => {
@@ -96,13 +100,36 @@ export const App: React.FC = () => {
         }
     }, [])
 
+    const goTo = (e: IOracle) => {
+        console.log(e)
+    }
+
+    const addNew = () => {
+        fetch('http://localhost:5000/api/v1/createOracle/', {
+            // body: JSON.stringify({ ownerAddress: connectConfig.address }),
+            method: 'POST',
+            headers: {
+                Accept: "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${count.apiKey}`
+            },
+        }).then(e => e.json()).then((e: { status: string, newOracle: IOracle }) => {
+            console.log(e)
+            if (e.status === 'ok') {
+                dispatch(write({ ...count, oracles: [...count.oracles, e.newOracle] }))
+            } else {
+                alert('some error or denied')
+                console.log(e)
+            }
+        })
+        console.log('new')
+    }
     return (
         <div style={{
             height: '100vh',
             background: '#161726',
             color: '#fff',
             backgroundRepeat: 'no-repeat',
-            backgroundImage: `url(https://ipfs.io/ipfs/bafybeiemkofqtjsvywfk53xthpv5dqwmpszrzvcaxf4ftfec6ixll5mi5a)`,
             backgroundSize: `cover`
         }}>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -121,7 +148,24 @@ export const App: React.FC = () => {
                         : null}
 
                     {isConnected ? <div>
-                        <h3>Info block</h3>
+                        <h1>RAVEN</h1>
+                        {count ? <>
+                            <h3>Your oracles info block</h3>
+                            <p>
+                                Your raven apiKey: {`${count.apiKey.slice(0, 5)}...${count.apiKey.slice(-5)}`}
+                            </p>
+                            <p>
+                                Your existed oracles: {
+                                    !count.oracles[0] ? <p> * You dont have any</p> :
+                                        count.oracles.map((e: IOracle) => <p><Link to={`/oracle/${e.oracleKey}`}><button onClick={() => goTo(e)}>id {`${e.oracleKey.slice(0, 5)}...${e.oracleKey.slice(-5)}`}</button>
+                                        </Link></p>
+                                        )
+                                }
+                            </p>
+                            <p>
+                                <button onClick={addNew}>Create new raven oracle</button>
+                            </p></> : 'some error with acc login'}
+                        <h3>Your owner wallet info block</h3>
                         <p>isConnected: {isConnected ? 'Connected' : 'Disconnected'}</p>
                         <p>typeConnect: {typeConnect}</p>
                         <p>network: {network}</p>
@@ -130,9 +174,6 @@ export const App: React.FC = () => {
                             Disconnect
                         </button>
                         <h3>Send transaction</h3>
-                        <button onClick={() => sendTransaction()}>
-                            Send test transaction
-                        </button>
                         <p>transaction: {JSON.stringify(dataTx)}</p>
                         {approveLink !== '' ?
                             <div style={{ borderRadius: '20px', padding: '20px', background: '#fff', marginBottom: '20px', width: '200px' }}>
@@ -143,6 +184,9 @@ export const App: React.FC = () => {
                 </div>
             </div>
             <DeLabModal DeLabConnectObject={DeLabConnector} scheme={'dark'} />
-        </div>
+        </div >
     )
 }
+                        // <button onClick={() => sendTransaction()}>
+                        //     Send test transaction
+                        // </button>

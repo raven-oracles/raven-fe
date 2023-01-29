@@ -29,23 +29,23 @@ const config: Configuration = {
             },
             {
                 test: /\.(css|scss)$/,
-                use: [ 'style-loader', 'css-loader' ]
+                use: ['style-loader', 'css-loader']
             },
             {
                 test: /\.js$/,
                 enforce: 'pre',
-                use: [ 'source-map-loader' ]
+                use: ['source-map-loader']
             },
             {
                 test: /\.(jpe?g|gif|png|svg)$/i,
                 use: [
-                {
-                  loader: 'file-loader',
-                  options: {
-                    limit: 10000
-                  }
-                }
-              ]
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            limit: 10000
+                        }
+                    }
+                ]
             }
         ]
     },
@@ -63,8 +63,9 @@ const config: Configuration = {
         new ProvidePlugin({ process: 'process/browser' })
     ],
     resolve: {
-        extensions: [ '.ts', '.tsx', '.js' ],
-        alias: { process: 'process/browser',
+        extensions: ['.ts', '.tsx', '.js'],
+        alias: {
+            process: 'process/browser',
             // react: require.resolve("react"),
             // 'react-dom': require.resolve('react-dom')
         },
