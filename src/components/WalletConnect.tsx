@@ -71,11 +71,12 @@ export const WalletConnect: FC = () => {
           borderRadius: '20px',
           padding: '20px',
           marginTop: '20px',
-          height: '80vh'
         }}>
           {!isConnected ?
             <DeLabButton DeLabConnectObject={DeLabConnector} scheme={'dark'} />
-            : null}
+            :
+            <button onClick={() => { DeLabConnector.disconnect() }}>disconect</button>
+          }
         </div>
       </div>
       <DeLabModal DeLabConnectObject={DeLabConnector} scheme={'dark'} />

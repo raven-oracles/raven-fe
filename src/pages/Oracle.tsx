@@ -41,6 +41,11 @@ export const Oracle: FC = () => {
       backgroundRepeat: 'no-repeat',
       backgroundSize: `cover`
     }}>
+      <Link to='/' style={{
+        padding: '20px',
+        marginTop: '20px',
+        color: 'white', margin: '-20px auto 20px auto'
+      }}>&lt; go to main page</Link>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div style={{
           display: 'flex',
@@ -50,10 +55,8 @@ export const Oracle: FC = () => {
           borderRadius: '20px',
           padding: '20px',
           marginTop: '20px',
-          height: '80vh'
         }}>
 
-          <Link to='/'>go back</Link>
           {isConnected ? <div>
             <h1>Oracle {id}</h1>
             {(user && oracle) ? <>

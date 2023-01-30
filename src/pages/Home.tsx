@@ -28,10 +28,14 @@ export const Home: FC = () => {
                     borderRadius: '20px',
                     padding: '20px',
                     marginTop: '20px',
-                    height: '80vh'
                 }}>
                     {isConnected ? <div>
                         <h1>RAVEN</h1>
+                        <h3>Your owner wallet info block</h3>
+                        <p>isConnected: {isConnected ? 'Connected' : 'Disconnected'}</p>
+                        <p>typeConnect: {typeConnect}</p>
+                        <p>network: {network}</p>
+                        <p>address: {address ? `${address.substr(0, 5)}...${address.substr(address.length - 5, address.length)}` : ``}</p>
                         {user ? <>
                             <h3>Your oracles info block</h3>
                             <p>
@@ -48,14 +52,6 @@ export const Home: FC = () => {
                             <p>
                                 <button onClick={() => createOracle(user, dispatch)}>Create new raven oracle</button>
                             </p></> : 'some error with acc login'}
-                        <h3>Your owner wallet info block</h3>
-                        <p>isConnected: {isConnected ? 'Connected' : 'Disconnected'}</p>
-                        <p>typeConnect: {typeConnect}</p>
-                        <p>network: {network}</p>
-                        <p>address: {address ? `${address.substr(0, 5)}...${address.substr(address.length - 5, address.length)}` : ``}</p>
-                        <button onClick={() => DeLabConnector.disconnect()}>
-                            Disconnect
-                        </button>
                     </div> : null}
                 </div>
             </div>
