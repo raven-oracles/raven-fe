@@ -2,11 +2,9 @@ import React from 'react'
 import eruda from 'eruda'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
-import store from './store'
+import store from './store/'
 import { App } from './App'
-import { Oracle } from './Oracle'
-
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import './style.css'
 
 const el = document.createElement('div')
 document.body.appendChild(el)
@@ -19,12 +17,7 @@ eruda.init({
 ReactDOM.render(
     <React.StrictMode>
         <Provider store={store}>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<App />} />
-                    <Route path="/oracle/:id" element={<Oracle />} />
-                </Routes>
-            </BrowserRouter>
+            <App />
         </Provider>
     </React.StrictMode>,
     document.querySelector('#root')
