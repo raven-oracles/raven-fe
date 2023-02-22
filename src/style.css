@@ -1,3 +1,8 @@
 body {
   background: black;
 }
+
+.makeCopy {
+  text-decoration: underline;
+  cursor: pointer;
+}

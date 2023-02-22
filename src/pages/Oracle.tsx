@@ -46,6 +46,15 @@ const oracleClientSourceV1CodeBoc =
 
 export const oracleClientSourceV1CodeCell = Cell.fromBoc(Buffer.from(oracleClientSourceV1CodeBoc, 'base64'))[0]
 
+export enum OPS {
+  // Excesses = 0xd53276db,
+  Signup = 0x4ea31eef,
+  CreateAccount = 0x2f2067c2,
+  Fetch = 0x82e96343,
+  Update = 0x98253578,
+  Withdrawal = 0x6d2d3b45,
+  NewValue = 0xe5e11be9,
+}
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;
 
@@ -159,15 +168,20 @@ export const Oracle: FC = () => {
   const { id } = useParams();
 
   const [oracle, setOracle] = useState<IOracle | null>(null)
+  const [userContractAddress, setUserContractAddress] = useState<string>('')
+  const [valueBoc, setValueBoc] = useState<string>('')
+  const [valueNumber, setValueNumber] = useState<string>('')
 
-  useEffect(() => {
-    setOracle(user.oracles.filter((e: IOracle) => e.oracleKey === id)[0] as IOracle)
-  }, [user])
 
   const masterDeloy = async () => {
     //todo create body and deploy
     //todo get oracle address
     //send to api
+    //
+    if (oracle?.oracleAddress === 'none') {
+      alert('deploy oracle wallet pls')
+      return
+    }
     config.admin_address = Address.parseFriendly(wallet.address ?? '').address
     const masterContractCode = oracleMasterSourceV1CodeCell
     config.whitelisted_oracle_addresses = [Address.parseFriendly(oracle?.oracleAddress ?? '').address]
@@ -193,6 +207,11 @@ export const Oracle: FC = () => {
     const isTonkeeper = typeConnect === "tonkeeper";
     const cellEncoded = stateInit.toBoc().toString('base64')
 
+    console.log(123)
+    console.log(masterContractAddress.toFriendly()
+    )
+    console.log(masterContractAddress.toFriendly({ urlSafe: isTonkeeper })
+    )
     const trans: DeLabTransaction = {
       to: masterContractAddress.toFriendly({ urlSafe: isTonkeeper }),
       value: toNano(0.069).toString(),
@@ -240,6 +259,7 @@ export const Oracle: FC = () => {
           }).then(e => e.json()).then((e: { status: string }) => {
             if (e.status === 'ok') {
               console.log(e)
+              alert('done deploy master')
             } else {
               console.log(e)
             }
@@ -258,6 +278,221 @@ export const Oracle: FC = () => {
     // await rpcClient.sendExternalMessage(owner.wallet, await masterContractDeployTrx()); // deploy master
     // await seqnoWaiter(rpcClient, owner.wallet)
   }
+
+  const signup = async () => {
+    if (oracle?.oracleAddress === 'none') {
+      alert('deploy oracle wallet pls')
+      return
+    }
+    if (oracle?.masterAddress === 'none') {
+      alert('deploy master sc pls')
+      return
+    }
+    if (!oracle) return
+    console.log(userContractAddress)
+    const signupBody = beginCell()
+      .storeUint(OPS.Signup, 32) // opcode
+      .storeUint(0, 64) // queryid
+      .storeAddress(Address.parseFriendly(userContractAddress).address)
+      .endCell()
+    // const clietnWalletBalance = await rpcClient.getBalance(client.wallet.address)
+
+    const toUrlSafe = (str: string) => str.replace(/\+/g, "-").replace(/\//g, "_");
+    const isTonkeeper = typeConnect === "tonkeeper";
+    const cellEncoded = signupBody.toBoc().toString('base64')
+
+    console.log(123)
+    // console.log(masterContractAddress.toFriendly()
+    // )
+    // console.log(masterContractAddress.toFriendly({ urlSafe: isTonkeeper })
+    // )
+    const value = 1.577
+
+    const trans: DeLabTransaction = {
+      to: Address.parseFriendly(oracle.masterAddress).address.toFriendly({ urlSafe: isTonkeeper }),
+      value: toNano(value).toString(),
+      payload: isTonkeeper ? toUrlSafe(cellEncoded) : cellEncoded,
+    }
+
+    const res = await DeLabConnector.sendTransaction(trans)
+    console.log(res)
+
+    let found = false
+    const pullInterval = 6000
+    const pullCount = 10;
+
+    if (res) {
+      // if (isTonkeeper) {
+      //   console.log('DONE? keeper');
+      //   console.log(res);
+      // }
+      console.log("pending");
+      try {
+        let clientSCaddress = null
+        let now = Date.now();
+        for (let i = 0; i < pullCount; i++) {
+          let txns = await Client.getTransactions(Address.parseFriendly(oracle.masterAddress).address, { limit: 2 });
+          console.log(txns)
+          let hasTx = txns.find((tx) => tx.inMessage?.value.eq(toNano(value)));
+          if (hasTx) {
+            clientSCaddress = hasTx.outMessages[0].destination?.toFriendly()
+            found = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, pullInterval));
+        }
+        if (found) {
+          console.log("success, sending request to update master add");
+          fetch('http://localhost:5000/api/v1/uploadClientAndUserAddresses/', {
+            method: 'POST',
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${user.apiKey}`
+            },
+            body: JSON.stringify({
+              oracleKey: id,
+              clientAddress: clientSCaddress,
+              userAddress: userContractAddress
+            })
+          }).then(e => e.json()).then((e: { status: string }) => {
+            if (e.status === 'ok') {
+              console.log(e)
+              alert('done signup')
+            } else {
+              console.log(e)
+            }
+          })
+        } else {
+          console.log("error");
+        }
+      } catch (e) {
+        console.log("error", e);
+      }
+    } else {
+      console.log("error");
+    }
+    return true
+  }
+
+
+  const fetchNewValue = async () => {
+
+    if (oracle?.oracleAddress === 'none') {
+      alert('deploy oracle wallet pls')
+      return
+    }
+    if (oracle?.masterAddress === 'none') {
+      alert('deploy master sc pls')
+      return
+    }
+    if (oracle?.clientAddress === 'none') {
+      alert('signup pls')
+      return
+    }
+    if (!oracle) return
+    console.log(userContractAddress)
+    const signupBody = beginCell()
+      .storeUint(OPS.Fetch, 32) // opcode
+      .storeUint(0, 64) // queryid
+      .storeAddress(Address.parseFriendly(oracle.clientAddress).address)
+      .endCell()
+    // const clietnWalletBalance = await rpcClient.getBalance(client.wallet.address)
+
+    const toUrlSafe = (str: string) => str.replace(/\+/g, "-").replace(/\//g, "_");
+    const isTonkeeper = typeConnect === "tonkeeper";
+    const cellEncoded = signupBody.toBoc().toString('base64')
+
+    console.log(123)
+    // console.log(masterContractAddress.toFriendly()
+    // )
+    // console.log(masterContractAddress.toFriendly({ urlSafe: isTonkeeper })
+    // )
+    const value = 0.009
+
+    const trans: DeLabTransaction = {
+      to: Address.parseFriendly(oracle.userAddress ?? userContractAddress).address.toFriendly({ urlSafe: isTonkeeper }),
+      value: toNano(value).toString(),
+      payload: isTonkeeper ? toUrlSafe(cellEncoded) : cellEncoded,
+    }
+
+    const res = await DeLabConnector.sendTransaction(trans)
+    console.log(res)
+
+    let found = false
+    const pullInterval = 6000
+    const pullCount = 10;
+
+    if (res) {
+      // if (isTonkeeper) {
+      //   console.log('DONE? keeper');
+      //   console.log(res);
+      // }
+      console.log("pending");
+      try {
+        let clientSCaddress = null
+        let now = Date.now();
+        for (let i = 0; i < pullCount; i++) {
+          let txns = await Client.getTransactions(Address.parseFriendly(oracle.userAddress ?? userContractAddress).address, { limit: 2 });
+          console.log(txns)
+          let hasTx = txns.find((tx) => tx.inMessage?.value.eq(toNano(value)));
+          if (hasTx) {
+            clientSCaddress = hasTx.outMessages[0].destination?.toFriendly()
+            found = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, pullInterval));
+        }
+        if (found) {
+          alert('done fetch');
+
+          // fetch('http://localhost:5000/api/v1/uploadClientAndUserAddresses/', {
+          //   method: 'POST',
+          //   headers: {
+          //     Accept: "application/json, text/plain, */*",
+          //     "Content-Type": "application/json",
+          //     'Authorization': `Bearer ${user.apiKey}`
+          //   },
+          //   body: JSON.stringify({
+          //     oracleKey: id,
+          //     clientAddress: clientSCaddress,
+          //     userAddress: userContractAddress
+          //   })
+          // }).then(e => e.json()).then((e: { status: string }) => {
+          //   if (e.status === 'ok') {
+          //     console.log(e)
+          //   } else {
+          //     console.log(e)
+          //   }
+          // })
+        } else {
+          console.log("error");
+        }
+      } catch (e) {
+        console.log("error", e);
+      }
+    } else {
+      console.log("error");
+    }
+    return true
+  }
+
+  const getNewValue = () => (async () => {
+    if (!oracle) { return }
+    const newValueBoc = await Client.callGetMethod(Address.parseFriendly(oracle.userAddress ?? userContractAddress).address, 'get_data_field') // works only for this case
+    const newValue = await Client.callGetMethod(Address.parseFriendly(oracle.userAddress ?? userContractAddress).address, 'get_data_field_value') // works only for this case
+    console.log(newValueBoc)
+    console.log(newValue)
+    setValueBoc(newValueBoc.stack[0][1].bytes)
+    setValueNumber((parseInt(newValue.stack[0][1]) / 100)+'')
+  })()
+
+  useEffect(() => {
+    setOracle(user.oracles.filter((e: IOracle) => e.oracleKey === id)[0] as IOracle)
+    getNewValue()
+  }, [user])
+
+  const makeCopy = (text: string) => <span className={'makeCopy'} onClick={() => navigator.clipboard.writeText(text)}>{text}</span>
 
   return (
     <div style={{
@@ -283,17 +518,44 @@ export const Oracle: FC = () => {
         }}>
 
           {isConnected ? <div>
-            <h1>Oracle {id}</h1>
+            <h1>Oracle {makeCopy(id + '')}</h1>
             {(user && oracle) ? <>
               <h3>Your oracle info block</h3>
               <p>
-                Your raven apiKey: {`${user.apiKey.slice(0, 5)}...${user.apiKey.slice(-5)}`}
+                Your raven apiKey: <span className={'makeCopy'} onClick={() => navigator.clipboard.writeText(user.apiKey)}>{`${user.apiKey.slice(0, 5)}...${user.apiKey.slice(-5)}`}</span>
               </p>
-              <p>oracleAddress: {oracle.oracleAddress}</p>
-              <p>masterAddress: {oracle.masterAddress}</p>
-              <p>clientAddress: {oracle.clientAddress}</p>
-              <p>userAddress: {oracle.userAddress}</p>
+              <p>oracleAddress: {makeCopy(oracle.oracleAddress)}</p>
+              <p>masterAddress: {makeCopy(oracle.masterAddress)}</p>
+              <p>clientAddress: {makeCopy(oracle.clientAddress)}</p>
+              <p>userAddress: {makeCopy(oracle.userAddress)}</p>
               <button onClick={masterDeloy}>deploy master contract</button>
+              <br />
+              <br />
+              <button onClick={() => setUserContractAddress('EQCY1gG9Xv9jMZrDF799SgWMe7B8g9LX2vHUeOu1ncEUeU7O')}>use our default user sc</button>
+              <br />
+              <br />
+              or you can insert you own address:
+              <br />
+              <input value={userContractAddress} onChange={(e) => setUserContractAddress(e.target.value)} />
+              <br />
+              <br />
+              <button onClick={signup}>signup</button>
+              <br />
+              <br />
+              fetch new value from client sc via user sc
+              <br />
+              <button onClick={fetchNewValue}>fetch</button>
+              <br />
+              <br />
+              get new value
+              <br />
+              <button onClick={getNewValue}>get
+              </button>
+              <br />
+              <br />
+              ur value boc: {valueBoc}
+              <br />
+              ur value number: {valueNumber}
             </> : 'some error with acc login'}
           </div>
             : null}

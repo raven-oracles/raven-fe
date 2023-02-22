@@ -9,10 +9,6 @@ import './style.css'
 const el = document.createElement('div')
 document.body.appendChild(el)
 
-eruda.init({
-    container: el,
-    tool: ['console', 'elements']
-})
 
 ReactDOM.render(
     <React.StrictMode>

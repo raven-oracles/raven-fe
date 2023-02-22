@@ -13,6 +13,16 @@ const config: Configuration = {
     devServer: {
         static: { directory: path.join(__dirname, 'public') },
         compress: true,
+        historyApiFallback: {
+            rewrites: [
+                {
+                    from: /.*/, to: '/index.html'
+                },
+                {
+                    from: /^\/oracle\/.*$/, to: '/index.html'
+                },
+            ],
+        },
         https: false,
         port: 8080,
         headers: {
@@ -52,7 +62,8 @@ const config: Configuration = {
     ignoreWarnings: [/Failed to parse source map/],
     output: {
         filename: '[name].js',
-        path: path.resolve(__dirname, 'build')
+        path: path.resolve(__dirname, 'build'),
+        publicPath: '/'
     },
     plugins: [
         new HtmlWebpackPlugin({ template: path.join(__dirname, 'public', 'index.html') }),

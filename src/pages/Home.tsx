@@ -12,6 +12,7 @@ export const Home: FC = () => {
     const wallet = useSelector((state: ReturnType<typeof store.getState>) => state.wallet.value)
     const { isConnected, address, network, typeConnect } = wallet
     const dispatch = useDispatch()
+    const makeCopy = (text: string) => <span className={'makeCopy'} onClick={() => navigator.clipboard.writeText(text)}>{text}</span>
     return (
         <div style={{
             background: 'black',
@@ -35,11 +36,11 @@ export const Home: FC = () => {
                         <p>isConnected: {isConnected ? 'Connected' : 'Disconnected'}</p>
                         <p>typeConnect: {typeConnect}</p>
                         <p>network: {network}</p>
-                        <p>address: {address ? `${address.substr(0, 5)}...${address.substr(address.length - 5, address.length)}` : ``}</p>
+                        <p>address: <span className={'makeCopy'} onClick={() => navigator.clipboard.writeText(address + "")}>{address ? `${address.substr(0, 5)}...${address.substr(address.length - 5, address.length)}` : ``}</span></p>
                         {user ? <>
                             <h3>Your oracles info block</h3>
                             <p>
-                                Your raven apiKey: {`${user.apiKey.slice(0, 5)}...${user.apiKey.slice(-5)}`}
+                                Your raven apiKey: <span className={'makeCopy'} onClick={() => navigator.clipboard.writeText(user.apiKey)}>{`${user.apiKey.slice(0, 5)}...${user.apiKey.slice(-5)}`}</span>
                             </p>
                             <p>
                                 Your existed oracles: {
